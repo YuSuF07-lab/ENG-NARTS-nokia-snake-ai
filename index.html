@@ -2,29 +2,33 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Nokia 3310 Snake II - Mühendisler Kulübü</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nokia 3310 Snake II - Controls & Slow Mode</title>
     <style>
-        /* Nokia 3310 Ekran Renkleri ve Tasarımı */
         body {
             background-color: #2c3e50;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             font-family: 'Courier New', Courier, monospace;
+            touch-action: manipulation; /* Mobilde kaydırmayı engeller */
         }
-        #game-container {
-            border: 20px solid #555;
+        #game-box {
+            position: relative;
+            border: 15px solid #555;
             border-radius: 15px;
             padding: 10px;
-            background-color: #c7f0d8; /* O meşhur Nokia Yeşili */
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            background-color: #c7f0d8;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
         canvas {
             display: block;
             image-rendering: pixelated;
             border: 2px solid #000;
+            max-width: 100%;
         }
         .ui {
             color: #000;
@@ -34,31 +38,114 @@
             font-size: 18px;
             margin-bottom: 5px;
         }
+        #start-screen {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            width: 336px;
+            height: 192px;
+            background-color: #c7f0d8;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        /* Kontrol Tuşları Tasarımı */
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn {
+            width: 60px;
+            height: 60px;
+            background-color: #333;
+            color: #c7f0d8;
+            border: 3px solid #111;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn:active { background-color: #555; transform: scale(0.95); }
+        .up { grid-column: 2; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+        
+        h1 { color: #000; margin: 0; font-size: 28px; }
+        button#start-btn {
+            background-color: #000;
+            color: #c7f0d8;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            cursor: pointer;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
-<div id="game-container">
+<div id="game-box">
     <div class="ui">
+        <span>SNAKE II</span>
         <span>SCORE: <span id="score">000</span></span>
     </div>
+    
     <canvas id="snakeGame" width="336" height="192"></canvas>
+
+    <div id="start-screen">
+        <h1>SNAKE II</h1>
+        <button id="start-btn" onclick="startGame()">START GAME</button>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="btn up" onclick="handleControl('UP')">▲</div>
+    <div class="btn left" onclick="handleControl('LEFT')">◀</div>
+    <div class="btn down" onclick="handleControl('DOWN')">▼</div>
+    <div class="btn right" onclick="handleControl('RIGHT')">▶</div>
 </div>
 
 <script>
     const canvas = document.getElementById("snakeGame");
     const ctx = canvas.getContext("2d");
     const scoreElement = document.getElementById("score");
+    const startScreen = document.getElementById("start-screen");
 
-    // Nokia 3310 çözünürlüğü 84x48'dir. 4 kat ölçekleme yapıyoruz.
-    const grid = 4 * 4; 
+    const grid = 16; 
     let score = 0;
-    let gameSpeed = 100;
+    // HIZ AYARI: 100ms'den 300ms'ye çıkarıldı (1/3 hız)
+    let initialSpeed = 300; 
+    let gameSpeed = initialSpeed;
+    let gameRunning = false;
 
     let snake = [{x: 160, y: 80}, {x: 144, y: 80}, {x: 128, y: 80}];
     let dx = grid;
     let dy = 0;
     let food = {x: 0, y: 0};
+
+    function startGame() {
+        startScreen.style.display = "none";
+        gameRunning = true;
+        score = 0;
+        gameSpeed = initialSpeed;
+        scoreElement.innerHTML = "000";
+        snake = [{x: 160, y: 80}, {x: 144, y: 80}, {x: 128, y: 80}];
+        dx = grid;
+        dy = 0;
+        createFood();
+        main();
+    }
 
     function createFood() {
         food.x = Math.floor(Math.random() * (canvas.width / grid)) * grid;
@@ -66,9 +153,12 @@
     }
 
     function main() {
+        if (!gameRunning) return;
+
         if (didGameEnd()) {
-            alert("OYUN BİTTİ! Skorun: " + score);
-            location.reload();
+            gameRunning = false;
+            startScreen.style.display = "flex";
+            startScreen.querySelector('h1').innerText = "GAME OVER";
             return;
         }
 
@@ -87,7 +177,7 @@
     }
 
     function drawSnake() {
-        ctx.fillStyle = "#000"; // Tam siyah yılan
+        ctx.fillStyle = "#000";
         snake.forEach(part => {
             ctx.fillRect(part.x, part.y, grid - 2, grid - 2);
         });
@@ -97,11 +187,10 @@
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
         snake.unshift(head);
         
-        const didEatFood = snake[0].x === food.x && snake[0].y === food.y;
-        if (didEatFood) {
+        if (snake[0].x === food.x && snake[0].y === food.y) {
             score += 10;
             scoreElement.innerHTML = score.toString().padStart(3, '0');
-            if (gameSpeed > 40) gameSpeed -= 2; // Gittikçe hızlan
+            if (gameSpeed > 100) gameSpeed -= 5; // Yavaşça hızlanma
             createFood();
         } else {
             snake.pop();
@@ -112,11 +201,7 @@
         for (let i = 4; i < snake.length; i++) {
             if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
         }
-        const hitLeftWall = snake[0].x < 0;
-        const hitRightWall = snake[0].x > canvas.width - grid;
-        const hitTopWall = snake[0].y < 0;
-        const hitBottomWall = snake[0].y > canvas.height - grid;
-        return hitLeftWall || hitRightWall || hitTopWall || hitBottomWall;
+        return snake[0].x < 0 || snake[0].x >= canvas.width || snake[0].y < 0 || snake[0].y >= canvas.height;
     }
 
     function drawFood() {
@@ -124,29 +209,22 @@
         ctx.fillRect(food.x, food.y, grid - 2, grid - 2);
     }
 
-    document.addEventListener("keydown", changeDirection);
-
-    function changeDirection(event) {
-        const LEFT_KEY = 37;
-        const RIGHT_KEY = 39;
-        const UP_KEY = 38;
-        const DOWN_KEY = 40;
-
-        const keyPressed = event.keyCode;
-        const goingUp = dy === -grid;
-        const goingDown = dy === grid;
-        const goingRight = dx === grid;
-        const goingLeft = dx === -grid;
-
-        if (keyPressed === LEFT_KEY && !goingRight) { dx = -grid; dy = 0; }
-        if (keyPressed === UP_KEY && !goingDown) { dx = 0; dy = -grid; }
-        if (keyPressed === RIGHT_KEY && !goingLeft) { dx = grid; dy = 0; }
-        if (keyPressed === DOWN_KEY && !goingUp) { dx = 0; dy = grid; }
+    // Hem Tuşlar Hem Klavye İçin Ortak Kontrol Fonksiyonu
+    function handleControl(dir) {
+        if (dir === 'UP' && dy === 0) { dx = 0; dy = -grid; }
+        if (dir === 'DOWN' && dy === 0) { dx = 0; dy = grid; }
+        if (dir === 'LEFT' && dx === 0) { dx = -grid; dy = 0; }
+        if (dir === 'RIGHT' && dx === 0) { dx = grid; dy = 0; }
     }
 
-    createFood();
-    main();
-</script>
+    window.addEventListener("keydown", event => {
+        if (event.code === "Space" && !gameRunning) startGame();
+        if (event.keyCode === 38) handleControl('UP');
+        if (event.keyCode === 40) handleControl('DOWN');
+        if (event.keyCode === 37) handleControl('LEFT');
+        if (event.keyCode === 39) handleControl('RIGHT');
+    });
 
+</script>
 </body>
 </html>
