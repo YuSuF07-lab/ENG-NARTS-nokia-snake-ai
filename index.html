@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nokia Snake - Kontrol Panelli</title>
+    <title>Nokia Snake - Tam Sürüm</title>
     <style>
         body {
             display: flex;
@@ -12,17 +12,17 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #2c3e50;
+            background-color: #1a1a1a;
             font-family: 'Courier New', Courier, monospace;
-            touch-action: manipulation; /* Çift dokunma yakınlaştırmasını engeller */
+            touch-action: manipulation;
         }
         #game-container {
             text-align: center;
             background-color: #97ad7c;
             padding: 15px;
-            border-radius: 10px;
-            border: 6px solid #444;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 20px;
+            border: 10px solid #333;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
         .header-info {
             display: flex;
@@ -31,42 +31,43 @@
             font-weight: bold;
             font-size: 1.1rem;
             color: #000;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
         }
         canvas {
             border: 2px solid #000;
             background-color: #97ad7c;
             display: block;
-            width: 300px; /* Mobil uyum için biraz küçültüldü */
+            width: 300px;
             height: 300px;
+            image-rendering: pixelated; /* Piksellerin net görünmesi için */
         }
-        /* Yön Tuşları Tasarımı */
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(2, 60px);
-            gap: 10px;
-            margin-top: 20px;
-            justify-content: center;
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(2, 70px);
+            gap: 15px;
+            margin-top: 25px;
         }
         .btn {
-            width: 60px;
-            height: 60px;
-            background-color: #444;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 24px;
-            font-weight: bold;
+            width: 70px;
+            height: 70px;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 50%;
+            font-size: 28px;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px #222;
+            box-shadow: 0 5px #000;
+            transition: 0.1s;
         }
         .btn:active {
-            box-shadow: 0 0 #222;
-            transform: translateY(4px);
-            background-color: #555;
+            box-shadow: 0 2px #000;
+            transform: translateY(3px);
+            background-color: #444;
         }
         .up { grid-column: 2; }
         .left { grid-column: 1; grid-row: 2; }
@@ -101,17 +102,16 @@
     const tileCount = 20;
 
     let score = 0;
-    let highScore = localStorage.getItem("snakeHighScore3310") || 0;
+    let highScore = localStorage.getItem("snakeHighScoreV3") || 0;
     highScoreElement.innerText = highScore;
 
-    let snake = [{x: 10, y: 10}];
-    let food = {x: 15, y: 15};
+    let snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}]; // Başlangıçta 3 boğum
+    let food = {x: 5, y: 5};
     let dx = 0;
     let dy = 0;
+    let gameStarted = false; // Hareket kontrolü için bayrak
     
-    // HIZ AYARI: Bu değer yükseldikçe oyun yavaşlar (ms cinsinden)
-    // 100 hızlıydı, 150 daha ideal ve dengeli bir hızdır.
-    const gameSpeed = 150; 
+    const gameSpeed = 160; 
 
     function main() {
         if (hasGameEnded()) {
@@ -129,25 +129,37 @@
     }
 
     function clearCanvas() {
+        // Arka plan
         ctx.fillStyle = "#97ad7c";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Izgara deseni
-        ctx.strokeStyle = "rgba(0,0,0,0.03)";
-        for(let i=0; i<canvas.width; i+=gridSize) {
-            ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,400); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(400,i); ctx.stroke();
+        // Retro LCD nokta deseni
+        ctx.fillStyle = "rgba(0,0,0,0.05)";
+        for(let x=0; x<canvas.width; x+=4) {
+            for(let y=0; y<canvas.height; y+=4) {
+                ctx.fillRect(x, y, 1, 1);
+            }
         }
     }
 
     function drawSnake() {
         snake.forEach((part, index) => {
+            // Kafa ve gövde rengi farkı
             ctx.fillStyle = (index === 0) ? "#000" : "#222";
-            ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+            ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 1, gridSize - 1);
+            
+            // Nokia stilinde boğumların içindeki küçük kare detayı
+            if(index !== 0) {
+                ctx.fillStyle = "#97ad7c";
+                ctx.fillRect(part.x * gridSize + 7, part.y * gridSize + 7, 6, 6);
+            }
         });
     }
 
     function advanceSnake() {
+        // Eğer oyuncu henüz yön tuşuna basmadıysa ilerleme yapma
+        if (!gameStarted) return;
+
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
         snake.unshift(head);
 
@@ -157,16 +169,16 @@
             if (score > highScore) {
                 highScore = score;
                 highScoreElement.innerText = highScore;
-                localStorage.setItem("snakeHighScore3310", highScore);
+                localStorage.setItem("snakeHighScoreV3", highScore);
             }
             createFood();
         } else {
-            if(dx !== 0 || dy !== 0) snake.pop();
+            snake.pop();
         }
     }
 
     function hasGameEnded() {
-        if (dx === 0 && dy === 0) return false;
+        if (!gameStarted) return false;
         const head = snake[0];
         const hitWall = head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount;
         const hitSelf = snake.slice(1).some(part => part.x === head.x && part.y === head.y);
@@ -176,18 +188,21 @@
     function createFood() {
         food.x = Math.floor(Math.random() * tileCount);
         food.y = Math.floor(Math.random() * tileCount);
-        // Yemin yılanın üstünde çıkmadığından emin ol
-        snake.forEach(part => {
-            if (part.x === food.x && part.y === food.y) createFood();
-        });
+        // Yılanın üstünde çıkmasın
+        if (snake.some(part => part.x === food.x && part.y === food.y)) createFood();
     }
 
     function drawFood() {
+        // Yem tasarımı (içi boş kare)
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 6, gridSize - 6);
         ctx.fillStyle = "#000";
-        ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+        ctx.fillRect(food.x * gridSize + 7, food.y * gridSize + 7, 6, 6);
     }
 
     function changeDir(direction) {
+        gameStarted = true; // İlk tuşa basıldığı an oyun başlar
         if (direction === 'LEFT' && dx !== 1) { dx = -1; dy = 0; }
         if (direction === 'UP' && dy !== 1) { dx = 0; dy = -1; }
         if (direction === 'RIGHT' && dx !== -1) { dx = 1; dy = 0; }
@@ -197,12 +212,12 @@
     function resetGame() {
         score = 0;
         scoreElement.innerText = score;
-        snake = [{x: 10, y: 10}];
+        snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
         dx = 0; dy = 0;
+        gameStarted = false;
         createFood();
     }
 
-    // Klavye Desteği
     window.addEventListener("keydown", e => {
         if (e.key === "ArrowLeft") changeDir('LEFT');
         if (e.key === "ArrowUp") changeDir('UP');
