@@ -2,144 +2,49 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Akıcı Nokia Snake</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nokia Snake - Kontrol Panelli</title>
     <style>
         body {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             background-color: #2c3e50;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: manipulation; /* Çift dokunma yakınlaştırmasını engeller */
         }
         #game-container {
             text-align: center;
             background-color: #97ad7c;
-            padding: 20px;
-            border-radius: 15px;
-            border: 8px solid #555;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 10px;
+            border: 6px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .header-info {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #000;
         }
         canvas {
-            border: 3px solid #000;
+            border: 2px solid #000;
             background-color: #97ad7c;
             display: block;
+            width: 300px; /* Mobil uyum için biraz küçültüldü */
+            height: 300px;
         }
-        .controls {
-            margin-top: 10px;
-            font-size: 0.9rem;
-            color: #333;
+        /* Yön Tuşları Tasarımı */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
         }
-    </style>
-</head>
-<body>
-
-<div id="game-container">
-    <div class="header-info">
-        <div>Skor: <span id="scoreVal">0</span></div>
-        <div>En Yüksek: <span id="highScoreVal">0</span></div>
-    </div>
-    <canvas id="snakeGame" width="400" height="400"></canvas>
-    <div class="controls">Yön tuşlarını kullanın</div>
-</div>
-
-<script>
-    const canvas = document.getElementById("snakeGame");
-    const ctx = canvas.getContext("2d");
-    const scoreElement = document.getElementById("scoreVal");
-    const highScoreElement = document.getElementById("highScoreVal");
-
-    const gridSize = 20;
-    const tileCount = canvas.width / gridSize;
-
-    let score = 0;
-    let highScore = localStorage.getItem("snakeHighScore") || 0;
-    highScoreElement.innerText = highScore;
-
-    // Yılanın durumu
-    let snake = [{x: 10, y: 10}];
-    let food = {x: 5, y: 5};
-    let dx = 0;
-    let dy = 0;
-    let nextDx = 0;
-    let nextDy = 0;
-
-    // Akıcılık için değişkenler
-    let moveTimer = 0;
-    const moveInterval = 0.12; // Hareket hızı (saniye cinsinden) ne kadar düşükse o kadar hızlı gider
-
-    function draw(currentTime) {
-        requestAnimationFrame(draw);
-        
-        // Hızı sabitlemek için basit bir zamanlayıcı
-        if (!lastTime) lastTime = currentTime;
-        const deltaTime = (currentTime - lastTime) / 1000;
-        lastTime = currentTime;
-
-        moveTimer += deltaTime;
-
-        if (moveTimer >= moveInterval) {
-            moveTimer = 0;
-            update();
-        }
-
-        render(moveTimer / moveInterval);
-    }
-
-    let lastTime = 0;
-
-    function update() {
-        dx = nextDx;
-        dy = nextDy;
-
-        if (dx === 0 && dy === 0) return;
-
-        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-
-        // Duvara çarpma
-        if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-            resetGame();
-            return;
-        }
-
-        // Kendine çarpma
-        for (let i = 0; i < snake.length; i++) {
-            if (head.x === snake[i].x && head.y === snake[i].y) {
-                resetGame();
-                return;
-            }
-        }
-
-        snake.unshift(head);
-
-        // Yemek yeme
-        if (head.x === food.x && head.y === food.y) {
-            score++;
-            scoreElement.innerText = score;
-            if (score > highScore) {
-                highScore = score;
-                highScoreElement.innerText = highScore;
-                localStorage.setItem("snakeHighScore", highScore);
-            }
-            placeFood();
-        } else {
-            snake.pop();
-        }
-    }
-
-    function render(lerpFactor) {
-        // Arka planı temizle
-        ctx.fillStyle = "#97ad7c";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Izgara çizgileri (Nokia stili için hafif belirgin)
-        ctx.strokeStyle =
