@@ -48,3 +48,170 @@
             margin-top: 20px;
             justify-content: center;
         }
+        .btn {
+            width: 60px;
+            height: 60px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px #222;
+        }
+        .btn:active {
+            box-shadow: 0 0 #222;
+            transform: translateY(4px);
+            background-color: #555;
+        }
+        .up { grid-column: 2; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="header-info">
+        <div>SKOR: <span id="scoreVal">0</span></div>
+        <div>MAX: <span id="highScoreVal">0</span></div>
+    </div>
+    <canvas id="snakeGame" width="400" height="400"></canvas>
+</div>
+
+<div class="controls-grid">
+    <button class="btn up" onclick="changeDir('UP')">▲</button>
+    <button class="btn left" onclick="changeDir('LEFT')">◀</button>
+    <button class="btn down" onclick="changeDir('DOWN')">▼</button>
+    <button class="btn right" onclick="changeDir('RIGHT')">▶</button>
+</div>
+
+<script>
+    const canvas = document.getElementById("snakeGame");
+    const ctx = canvas.getContext("2d");
+    const scoreElement = document.getElementById("scoreVal");
+    const highScoreElement = document.getElementById("highScoreVal");
+
+    const gridSize = 20;
+    const tileCount = 20;
+
+    let score = 0;
+    let highScore = localStorage.getItem("snakeHighScore3310") || 0;
+    highScoreElement.innerText = highScore;
+
+    let snake = [{x: 10, y: 10}];
+    let food = {x: 15, y: 15};
+    let dx = 0;
+    let dy = 0;
+    
+    // HIZ AYARI: Bu değer yükseldikçe oyun yavaşlar (ms cinsinden)
+    // 100 hızlıydı, 150 daha ideal ve dengeli bir hızdır.
+    const gameSpeed = 150; 
+
+    function main() {
+        if (hasGameEnded()) {
+            alert("OYUN BİTTİ! Skorun: " + score);
+            resetGame();
+        }
+
+        setTimeout(function onTick() {
+            clearCanvas();
+            drawFood();
+            advanceSnake();
+            drawSnake();
+            main();
+        }, gameSpeed);
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = "#97ad7c";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Izgara deseni
+        ctx.strokeStyle = "rgba(0,0,0,0.03)";
+        for(let i=0; i<canvas.width; i+=gridSize) {
+            ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,400); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(400,i); ctx.stroke();
+        }
+    }
+
+    function drawSnake() {
+        snake.forEach((part, index) => {
+            ctx.fillStyle = (index === 0) ? "#000" : "#222";
+            ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+        });
+    }
+
+    function advanceSnake() {
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+        snake.unshift(head);
+
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            scoreElement.innerText = score;
+            if (score > highScore) {
+                highScore = score;
+                highScoreElement.innerText = highScore;
+                localStorage.setItem("snakeHighScore3310", highScore);
+            }
+            createFood();
+        } else {
+            if(dx !== 0 || dy !== 0) snake.pop();
+        }
+    }
+
+    function hasGameEnded() {
+        if (dx === 0 && dy === 0) return false;
+        const head = snake[0];
+        const hitWall = head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount;
+        const hitSelf = snake.slice(1).some(part => part.x === head.x && part.y === head.y);
+        return hitWall || hitSelf;
+    }
+
+    function createFood() {
+        food.x = Math.floor(Math.random() * tileCount);
+        food.y = Math.floor(Math.random() * tileCount);
+        // Yemin yılanın üstünde çıkmadığından emin ol
+        snake.forEach(part => {
+            if (part.x === food.x && part.y === food.y) createFood();
+        });
+    }
+
+    function drawFood() {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+    }
+
+    function changeDir(direction) {
+        if (direction === 'LEFT' && dx !== 1) { dx = -1; dy = 0; }
+        if (direction === 'UP' && dy !== 1) { dx = 0; dy = -1; }
+        if (direction === 'RIGHT' && dx !== -1) { dx = 1; dy = 0; }
+        if (direction === 'DOWN' && dy !== -1) { dx = 0; dy = 1; }
+    }
+
+    function resetGame() {
+        score = 0;
+        scoreElement.innerText = score;
+        snake = [{x: 10, y: 10}];
+        dx = 0; dy = 0;
+        createFood();
+    }
+
+    // Klavye Desteği
+    window.addEventListener("keydown", e => {
+        if (e.key === "ArrowLeft") changeDir('LEFT');
+        if (e.key === "ArrowUp") changeDir('UP');
+        if (e.key === "ArrowRight") changeDir('RIGHT');
+        if (e.key === "ArrowDown") changeDir('DOWN');
+    });
+
+    createFood();
+    main();
+</script>
+</body>
+</html>
