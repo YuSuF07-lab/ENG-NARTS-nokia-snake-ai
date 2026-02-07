@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Nokia 3310 Yılan Oyunu</title>
+    <title>Akıcı Nokia Snake</title>
     <style>
         body {
             display: flex;
@@ -10,120 +10,136 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #8da399; /* Orijinal ekran rengine yakın */
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #2c3e50;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #game-container {
             text-align: center;
-            border: 10px solid #222;
-            padding: 10px;
             background-color: #97ad7c;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 15px;
+            border: 8px solid #555;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #000;
         }
         canvas {
-            border: 2px solid #000;
+            border: 3px solid #000;
             background-color: #97ad7c;
+            display: block;
         }
-        h1 { color: #000; margin-bottom: 5px; }
-        .score { font-size: 24px; font-weight: bold; color: #000; }
+        .controls {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #333;
+        }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <h1>S N A K E</h1>
-    <div class="score">Skor: <span id="scoreVal">0</span></div>
+    <div class="header-info">
+        <div>Skor: <span id="scoreVal">0</span></div>
+        <div>En Yüksek: <span id="highScoreVal">0</span></div>
+    </div>
     <canvas id="snakeGame" width="400" height="400"></canvas>
-    <p>Ok tuşlarını kullanarak yön ver!</p>
+    <div class="controls">Yön tuşlarını kullanın</div>
 </div>
 
 <script>
     const canvas = document.getElementById("snakeGame");
     const ctx = canvas.getContext("2d");
     const scoreElement = document.getElementById("scoreVal");
+    const highScoreElement = document.getElementById("highScoreVal");
 
-    const box = 20; // Kare boyutu
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+
     let score = 0;
-    let gameSpeed = 100;
+    let highScore = localStorage.getItem("snakeHighScore") || 0;
+    highScoreElement.innerText = highScore;
 
-    // Yılanın başlangıç konumu
-    let snake = [{ x: 9 * box, y: 10 * box }];
+    // Yılanın durumu
+    let snake = [{x: 10, y: 10}];
+    let food = {x: 5, y: 5};
+    let dx = 0;
+    let dy = 0;
+    let nextDx = 0;
+    let nextDy = 0;
 
-    // Yem konumu
-    let food = {
-        x: Math.floor(Math.random() * 19 + 1) * box,
-        y: Math.floor(Math.random() * 19 + 1) * box
-    };
+    // Akıcılık için değişkenler
+    let moveTimer = 0;
+    const moveInterval = 0.12; // Hareket hızı (saniye cinsinden) ne kadar düşükse o kadar hızlı gider
 
-    let d; // Yön değişkeni
+    function draw(currentTime) {
+        requestAnimationFrame(draw);
+        
+        // Hızı sabitlemek için basit bir zamanlayıcı
+        if (!lastTime) lastTime = currentTime;
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
 
-    document.addEventListener("keydown", direction);
+        moveTimer += deltaTime;
 
-    function direction(event) {
-        if(event.keyCode == 37 && d != "RIGHT") d = "LEFT";
-        else if(event.keyCode == 38 && d != "DOWN") d = "UP";
-        else if(event.keyCode == 39 && d != "LEFT") d = "RIGHT";
-        else if(event.keyCode == 40 && d != "UP") d = "DOWN";
-    }
-
-    function collision(head, array) {
-        for(let i = 0; i < array.length; i++) {
-            if(head.x == array[i].x && head.y == array[i].y) return true;
+        if (moveTimer >= moveInterval) {
+            moveTimer = 0;
+            update();
         }
-        return false;
+
+        render(moveTimer / moveInterval);
     }
 
-    function draw() {
+    let lastTime = 0;
+
+    function update() {
+        dx = nextDx;
+        dy = nextDy;
+
+        if (dx === 0 && dy === 0) return;
+
+        const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+        // Duvara çarpma
+        if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+            resetGame();
+            return;
+        }
+
+        // Kendine çarpma
+        for (let i = 0; i < snake.length; i++) {
+            if (head.x === snake[i].x && head.y === snake[i].y) {
+                resetGame();
+                return;
+            }
+        }
+
+        snake.unshift(head);
+
+        // Yemek yeme
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            scoreElement.innerText = score;
+            if (score > highScore) {
+                highScore = score;
+                highScoreElement.innerText = highScore;
+                localStorage.setItem("snakeHighScore", highScore);
+            }
+            placeFood();
+        } else {
+            snake.pop();
+        }
+    }
+
+    function render(lerpFactor) {
+        // Arka planı temizle
         ctx.fillStyle = "#97ad7c";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        for(let i = 0; i < snake.length; i++) {
-            ctx.fillStyle = (i == 0) ? "#000" : "#222"; // Baş kısmı siyah, gövde koyu gri
-            ctx.fillRect(snake[i].x, snake[i].y, box, box);
-            ctx.strokeStyle = "#97ad7c";
-            ctx.strokeRect(snake[i].x, snake[i].y, box, box);
-        }
-
-        // Yemi çiz
-        ctx.fillStyle = "#000";
-        ctx.fillRect(food.x, food.y, box, box);
-
-        // Eski baş konumu
-        let snakeX = snake[0].x;
-        let snakeY = snake[0].y;
-
-        // Yön kontrolü
-        if( d == "LEFT") snakeX -= box;
-        if( d == "UP") snakeY -= box;
-        if( d == "RIGHT") snakeX += box;
-        if( d == "DOWN") snakeY += box;
-
-        // Yılan yemi yerse
-        if(snakeX == food.x && snakeY == food.y) {
-            score++;
-            scoreElement.innerHTML = score;
-            food = {
-                x: Math.floor(Math.random() * 19 + 1) * box,
-                y: Math.floor(Math.random() * 19 + 1) * box
-            };
-        } else {
-            snake.pop(); // Kuyruğu sil
-        }
-
-        let newHead = { x: snakeX, y: snakeY };
-
-        // Oyun bitti kontrolleri (Duvara çarpma veya kendine çarpma)
-        if(snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
-            clearInterval(game);
-            alert("OYUN BİTTİ! Skorun: " + score);
-            location.reload(); // Sayfayı yenileyerek oyunu resetle
-        }
-
-        snake.unshift(newHead);
-    }
-
-    let game = setInterval(draw, gameSpeed);
-
-</script>
-</body>
-</html>
+        // Izgara çizgileri (Nokia stili için hafif belirgin)
+        ctx.strokeStyle =
